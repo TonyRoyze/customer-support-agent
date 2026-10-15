@@ -13,10 +13,10 @@ Goal: demonstrate one path from a customer complaint to a support ticket and a d
 
 ## Day 1 — Get a visible end-to-end skeleton
 
-- [ ] Create a small React + Vite + TypeScript app and add Tailwind and shadcn/ui.
-- [ ] Build one complaint form with title, description, steps to reproduce, expected result, actual result, and upload screenshots.
-- [ ] Build a result panel for the AI summary, category, and next action.
-- [ ] Create a minimal FastAPI backend with `POST /triage`.
+- [X] Create a small React + Vite + TypeScript app and add Tailwind and shadcn/ui.
+- [X] Build one complaint form with title, description, steps to reproduce, expected result, actual result, and upload screenshots.
+- [X] Build a result panel for the AI summary, category, and next action.
+- [X] Create a minimal FastAPI backend with `POST /triage`.
 - [ ] Add one sample complaint in case live model access is not ready.
 - [ ] Create a GCP project, enable billing, and enable Vertex AI and Cloud Run APIs.
 - [ ] Deploy the static frontend to Firebase Hosting if time allows; otherwise run both locally for the first demo.
