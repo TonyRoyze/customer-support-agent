@@ -1,92 +1,106 @@
-# 3-Day TODO: Barely Working Support Agent Prototype
+# Relay Support Agent — POC plan
 
-Goal: demonstrate one path from a customer complaint to a support ticket and a developer-reviewable draft PR. Keep the demo on synthetic data and a test repository.
+## Goal
 
-## Keep the stack small
+Build a local-first, single-user proof of concept that takes a synthetic customer complaint through AI triage, human review, a real GitHub issue, and one safe draft pull request. Use the user's eligible ChatGPT plan through Sign in with ChatGPT for model usage. Use Codex with the developer's ChatGPT subscription to build and maintain the software; do not treat the Codex subscription as a server API key.
 
-- Frontend: React + TypeScript + Vite + Tailwind + shadcn/ui
-- Backend: one Python FastAPI service on Cloud Run
-- AI: Gemini on Vertex AI; use a single constrained agent/tool workflow
-- Source of truth: GitHub Issues and Pull Requests
-- Hosting: Firebase Hosting for the frontend, Cloud Run for the API
-- No separate database, queue, email integration, or general-purpose coding sandbox for this demo
+The Sign in with ChatGPT plan-usage flow is documented for open-source and locally hosted apps. It may require an eligible ChatGPT account, user consent, and client registration; eligibility, model availability, and usage limits are controlled by OpenAI and may change. Do not design this POC to run as a public hosted service that shares the developer's plan token. See [OpenAI's Sign in with ChatGPT docs](https://developers.openai.com/siwc/quickstart) and [open-source plan-usage docs](https://developers.openai.com/siwc/token-sharing-open-source).
 
-## Day 1 — Get a visible end-to-end skeleton
-
-- [X] Create a small React + Vite + TypeScript app and add Tailwind and shadcn/ui.
-- [X] Build one complaint form with title, description, steps to reproduce, expected result, actual result, and upload screenshots.
-- [X] Build a result panel for the AI summary, category, and next action.
-- [X] Create a minimal FastAPI backend with `POST /triage`.
-- [ ] Add one sample complaint in case live model access is not ready.
-- [ ] Create a GCP project, enable billing, and enable Vertex AI and Cloud Run APIs.
-- [ ] Deploy the static frontend to Firebase Hosting if time allows; otherwise run both locally for the first demo.
-
-**Day 1 result:** submitting a complaint shows a summary, even if it uses the sample response.
-
-## Day 2 — Triage and create a GitHub ticket
-
-- [ ] Connect the backend to Gemini through Vertex AI.
-- [ ] Make the model return only a small JSON result: summary, type (`bug` / `feature` / `other`), reproduction steps, and confidence.
-- [ ] Show the result in the UI and allow the user to review it.
-- [ ] Add a **Create ticket** button; do not create tickets automatically during the demo.
-- [ ] Create a GitHub Issue in one test repository from the reviewed summary.
-- [ ] Use a repository-scoped GitHub credential on the backend only; never put it in React environment variables or browser code.
-- [ ] Display the created issue link in the UI.
-- [ ] Deploy FastAPI to Cloud Run and call it from the frontend over HTTPS.
-- [ ] Use a Cloud Run service account to access Vertex AI; keep GitHub credentials in Secret Manager.
-
-**Day 2 result:** a user can submit a complaint, review AI triage, and create a real issue in the test repo.
-
-## Day 3 — Open one safe, predictable draft PR
-
-- [ ] Pick one known bug in the test repository and prepare a small, predefined patch for it.
-- [ ] Add a **Try demo fix** button for that specific issue only.
-- [ ] Have the backend create a new branch, apply the predefined patch, and open a draft PR linked to the issue.
-- [ ] Put the changed files and a short explanation in the PR description.
-- [ ] Assign one developer as reviewer if the repo permits it.
-- [ ] Show the draft PR link and status in the frontend.
-- [ ] For every other complaint, show “Needs developer investigation” instead of attempting a code change.
-- [ ] Prepare one normal complaint and one ambiguous complaint for the live demo.
-
-**Day 3 result:** one known sample bug creates a reviewable draft PR; ambiguous reports stop safely.
-
-## Simple architecture
+## Product scope and architecture
 
 ```text
-React + shadcn frontend (Firebase Hosting)
-       │ HTTPS request
+Browser UI (localhost:5173)
+       │ same-machine HTTP only
        ▼
-FastAPI API + triage agent (Cloud Run)
-       ├── Gemini via Vertex AI: summarize/classify complaint
-       ├── GitHub API: create issue
-       └── GitHub API: apply one predefined demo patch and create draft PR
+FastAPI (127.0.0.1)
+       ├── ChatGPT OAuth + PKCE: sign-in and user-consented plan usage
+       ├── Responses API: structured multimodal complaint triage
+       ├── SQLite: local reports, review and GitHub operation state
+       └── GitHub API: explicit issue creation and one allowlisted draft fix
 ```
 
-The React app should only call the FastAPI endpoint. FastAPI calls Vertex AI and GitHub. On Cloud Run, give the service a dedicated service account for Vertex AI access; keep the GitHub credential in Secret Manager. Never place either credential in frontend code.
+- Frontend: existing React + TypeScript + Vite app.
+- Backend: existing FastAPI app, bound to loopback for this single-user POC.
+- Model: user's selected, available model through the public Responses API using the OAuth token issued for ChatGPT plan usage. Send `store: false` and `stream: true` as required by the plan-usage flow.
+- Login: Sign in with ChatGPT, using OAuth authorization code flow with PKCE, state and nonce validation, refresh handling, and a loopback callback. Do not use an API key or a developer's Codex CLI credentials.
+- Persistence: local SQLite database; no Firestore, Firebase, or cloud database.
+- GitHub: backend-only, fine-grained token scoped to one test repository. Keep it separate from ChatGPT OAuth credentials.
+- Demo: deterministic mode with clearly labeled sample triage, so the UI flow is demonstrable without model entitlement. Creating remote GitHub issues/PRs still requires a valid test repository credential.
 
-## Cut from the 3-day build
+## Build plan
 
-- [ ] No email or support-platform integration.
-- [ ] No automatic customer replies.
-- [ ] No automatic assignee selection; use one fixed demo reviewer.
-- [ ] No arbitrary AI-generated code edits or shell execution.
-- [ ] No database unless the prototype cannot work without one; GitHub can hold demo ticket/PR state.
-- [ ] No Pub/Sub, multi-agent setup, production authentication, or real customer data.
-- [ ] No merging, deploying, or claiming the AI fix is correct.
+### 1. Make the local demo honest and runnable
 
-## Definition of done
+- [x] Create React + Vite + TypeScript frontend and FastAPI backend.
+- [x] Build the complaint form with title, description, reproduction steps, expected/actual behavior, and screenshot upload.
+- [x] Build a triage result and review panel; keep create-ticket action explicit.
+- [x] Add local setup and configuration documentation.
+- [ ] Remove Google Cloud, Gemini/Vertex AI, Firestore, Firebase Hosting, and Cloud Run setup from the runtime configuration and docs.
+- [ ] Provide deterministic, visibly labeled sample triage that can run without ChatGPT OAuth.
+- [ ] Ensure the API binds to `127.0.0.1` and rejects non-loopback origins/requests for this local-only single-user prototype.
 
-- [ ] Complaint can be submitted from the UI.
-- [ ] Gemini returns a short summary and classification through Vertex AI.
-- [ ] User can review and create a GitHub Issue.
-- [ ] The one known demo bug can produce a linked draft PR.
-- [ ] Other or unclear reports do not create code changes.
-- [ ] A developer must review and merge the PR.
+### 2. Add ChatGPT plan sign-in and triage
 
-## Mandatory submission requirements
+- [ ] Register this open-source/local app for Sign in with ChatGPT plan usage; configure `agent_name_hint` and the loopback callback consistently.
+- [ ] Add a **Continue with ChatGPT** connection flow: generate/persist a stable host ID, generate fresh state/nonce/PKCE verifier per authorization attempt, request only required identity and plan-usage scopes, validate the callback, exchange the code, and verify the ID token.
+- [ ] Store issued client ID and refresh credentials in the operating-system credential store; never store them in browser local storage, SQLite, logs, or the repository.
+- [ ] Implement refresh, disconnect, reconnect, OAuth error handling, and clear account/plan connection status in the UI.
+- [ ] List available models for the authorized account and let the user choose an available model (or select a documented default after querying the account).
+- [ ] Replace Gemini calls with `POST /v1/responses` using the user's OAuth token; do not call ChatGPT private `backend-api` routes.
+- [ ] Request streamed output with `store: false`, accept text and image inputs supported by the selected model, and constrain the final triage object to `summary`, `type` (`bug` / `feature` / `other`), `reproduction_steps`, and `confidence`.
+- [ ] Treat complaint text and screenshots as untrusted input. Do not invent steps or causes. Validate model output on the backend before returning it.
+- [ ] Clearly distinguish ChatGPT-plan triage from deterministic demo fallback; never label fallback output as AI-generated.
 
-- [ ] Submit the pitch deck using the prescribed challenge template. Submissions that do not follow the required format may be disqualified.
-- [ ] Submit a 3–4 minute video demonstration that clearly shows the solution's working functionality. Videos exceeding the prescribed duration may be penalized or may not progress further in evaluation. If the video does not adequately demonstrate working functionality, the submission will not progress to prototype evaluation under the ladder process.
-- [ ] Provide a valid, accessible link to a deployed, working prototype and keep it functional throughout evaluation. The application, APIs, integrations, and other deployment components will be evaluated as they are at evaluation time; no retries or additional allowances are provided for unavailable or non-functional components.
-- [ ] Provide an accessible GitHub repository containing the source code and supporting materials, and keep it accessible throughout evaluation.
-- [ ] Provide a brief description of what was built, including how Firebase, Firestore, Cloud Run, and Gemini are used in the submission.
+### 3. Keep reports and operations local
+
+- [ ] Replace Firestore with SQLite tables for reports, original complaint fields, model result, user-reviewed edits, and external operation status/IDs.
+- [ ] Set SQLite file permissions to the current user; exclude the database and backups from Git.
+- [ ] Save only screenshot metadata and any data needed for the review; delete uploaded bytes after inference and do not attach screenshots to GitHub.
+- [ ] Add a retention/reset action that deletes local reports and credentials without affecting already-created GitHub issues.
+- [ ] Preserve duplicate protection for issue/PR writes. If a remote write outcome is uncertain, show its status and require reconciliation before another attempt.
+
+### 4. Create reviewed GitHub issues
+
+- [x] Add an explicit **Create ticket** action and GitHub issue endpoint.
+- [x] Format an issue from the reviewed summary/classification/reproduction notes and the original complaint.
+- [x] Show the returned issue number/link, actionable errors, and prevent automatic issue creation during triage.
+- [ ] Keep GitHub token in a local backend-only ignored env file or OS keychain; do not return it to the browser or include it in OAuth tokens.
+- [ ] Document a fine-grained credential restricted to one synthetic-data test repository with only the permissions needed for issues, and verify Issues are enabled.
+- [ ] Confirm issue creation is idempotent for retries and that uncertain failures are not blindly replayed.
+
+### 5. Add one safe draft PR path
+
+- [ ] Select a small known bug in the dedicated test repository and add one reviewed, predefined patch to the backend configuration/source.
+- [ ] Add a **Try demo fix** action only for that allowlisted report/bug; all other reports must return “Needs developer investigation.”
+- [ ] Create a new branch from the configured base, apply only the predefined file contents, and open a GitHub draft PR linked to the issue.
+- [ ] Do not accept arbitrary model-produced diffs, shell commands, file paths, repositories, or branch names.
+- [ ] Use a separate least-privilege GitHub credential for contents/PR creation, or clearly document the extra permissions on the single test-only token.
+- [ ] Display the draft PR link and state; never merge, deploy, or claim the fix is correct.
+
+### 6. Verify the complete local POC
+
+- [x] Add backend tests that mock model/GitHub/cloud interactions.
+- [ ] Remove cloud-specific tests and replace them with mocked OAuth, Responses API, SQLite, and GitHub behavior tests.
+- [ ] Check OAuth state/nonce/PKCE failures, token refresh/revocation, no-auth demo mode, malformed model output, screenshot limits, CORS/loopback restrictions, GitHub rejection, and uncertain-write recovery.
+- [ ] Run `npm run build` and `python -m pytest backend/tests -q`.
+- [ ] Walk through: connect ChatGPT plan → submit synthetic complaint → review/edit triage → create issue → use allowlisted fix → open draft PR → disconnect and clear local data.
+- [ ] Confirm no secrets, real customer data, uploaded image bytes, GCP setup, or generated database files are present in Git.
+
+## POC definition of done
+
+- [ ] Fresh clone can run locally from the README without a GCP project.
+- [ ] User can complete a ChatGPT plan connection on an eligible account, and app shows when plan usage is unavailable or disconnected.
+- [ ] A submitted synthetic complaint returns validated structured triage through the Responses API using the user's authorized plan, including image understanding where supported.
+- [ ] User can edit and confirm the result before any GitHub write.
+- [ ] User can create and open a real GitHub Issue in the configured test repository.
+- [ ] One explicitly allowlisted bug can produce a draft PR with a fixed patch and linked issue; other reports never trigger code changes.
+- [ ] Local state and credentials are user-scoped, excluded from Git, and can be cleared.
+- [ ] Demo mode works without OpenAI plan authorization and is clearly labeled as deterministic sample output.
+- [ ] Automated checks and the end-to-end local walkthrough pass.
+
+## Explicitly out of scope
+
+- Competition submission materials, pitch decks, prescribed demo video, judging/evaluation hosting requirements.
+- Gemini, Vertex AI, GCP billing, Firebase Hosting, Firestore, Cloud Run, API keys, or service-account deployment.
+- Public/multi-user production hosting, team accounts, arbitrary repositories, real customer information, or browser-held credentials.
+- Automatic replies, emails, support-system integration, auto-assignment, queues, unrestricted coding agents, automatic merges, or deployments.
