@@ -82,3 +82,11 @@ The React app should only call the FastAPI endpoint. FastAPI calls Vertex AI and
 - [ ] The one known demo bug can produce a linked draft PR.
 - [ ] Other or unclear reports do not create code changes.
 - [ ] A developer must review and merge the PR.
+
+## Mandatory submission requirements
+
+- [ ] Submit the pitch deck using the prescribed challenge template. Submissions that do not follow the required format may be disqualified.
+- [ ] Submit a 3–4 minute video demonstration that clearly shows the solution's working functionality. Videos exceeding the prescribed duration may be penalized or may not progress further in evaluation. If the video does not adequately demonstrate working functionality, the submission will not progress to prototype evaluation under the ladder process.
+- [ ] Provide a valid, accessible link to a deployed, working prototype and keep it functional throughout evaluation. The application, APIs, integrations, and other deployment components will be evaluated as they are at evaluation time; no retries or additional allowances are provided for unavailable or non-functional components.
+- [ ] Provide an accessible GitHub repository containing the source code and supporting materials, and keep it accessible throughout evaluation.
+- [ ] Provide a brief description of what was built, including how Firebase, Firestore, Cloud Run, and Gemini are used in the submission.
